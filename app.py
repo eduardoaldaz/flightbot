@@ -413,7 +413,7 @@ def get_stats():
 
 # Runs with both gunicorn and direct python
 init_db()
-start_scheduler()
+# start_scheduler()  # temporarily disabled
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
