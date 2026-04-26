@@ -411,11 +411,13 @@ def get_stats():
     return jsonify({"total_checks":checks,"total_notifs":notifs,"active_alerts":active,
                     "recent_notifs":recent_notifs,"recent_prices":recent_prices})
 
+# Runs with both gunicorn and direct python
+init_db()
+start_scheduler()
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8081)))
     args = parser.parse_args()
-    init_db()
-    start_scheduler()
     print(f"\n✈️  Flight Alert Bot  →  http://localhost:{args.port}\n")
     app.run(host="0.0.0.0", port=args.port, debug=False)
