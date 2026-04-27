@@ -38,7 +38,7 @@ def ago(days):
 def fetchone(sql, params=()):
     conn = get_conn()
     try:
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if DATABASE_URL else conn.cursor()
+        cur = conn.cursor()
         cur.execute(q(sql), params)
         row = cur.fetchone()
         return dict(row) if row else None
@@ -48,7 +48,7 @@ def fetchone(sql, params=()):
 def fetchall(sql, params=()):
     conn = get_conn()
     try:
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if DATABASE_URL else conn.cursor()
+        cur = conn.cursor()
         cur.execute(q(sql), params)
         return [dict(r) for r in cur.fetchall()]
     finally:
