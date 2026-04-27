@@ -41,7 +41,9 @@ def fetchone(sql, params=()):
         cur = conn.cursor()
         cur.execute(q(sql), params)
         row = cur.fetchone()
-        return dict(row) if row else None
+        if row is None: return None
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row))
     finally:
         conn.close()
 
@@ -50,7 +52,10 @@ def fetchall(sql, params=()):
     try:
         cur = conn.cursor()
         cur.execute(q(sql), params)
-        return [dict(r) for r in cur.fetchall()]
+        rows = cur.fetchall()
+        if not rows: return []
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in rows]
     finally:
         conn.close()
 
