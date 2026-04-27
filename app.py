@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 if DATABASE_URL:
-    import psycopg2, psycopg2.extras
+    import pg8000.native
 else:
     import sqlite3
     DB = Path("bot.db")
@@ -18,7 +18,13 @@ app = Flask(__name__)
 
 def get_conn():
     if DATABASE_URL:
-        return psycopg2.connect(DATABASE_URL)
+        import pg8000.dbapi
+        # Parse URL: postgresql://user:pass@host:port/db
+        from urllib.parse import urlparse
+        u = urlparse(DATABASE_URL)
+        return pg8000.dbapi.connect(
+            host=u.hostname, port=u.port or 5432,
+            database=u.path[1:], user=u.username, password=u.password, ssl_context=True)
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
     return c
