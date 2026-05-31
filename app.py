@@ -431,7 +431,8 @@ def build_message(name, alert, top5, best):
         cross_block = f"\n{insight}"
 
     # Links
-    gf = f"https://www.google.com/travel/flights?q=vuelos+{best['origin']}+{best['destination']}+{best['dep_date']}"
+    # Correct one-way URL for Google Flights
+    gf = f"https://www.google.com/flights#flt={best['origin']}.{best['destination']}.{best['dep_date']};c:EUR;e:1;sd:1;t:f"
     sk = f"https://www.skyscanner.es/transporte/vuelos/{best['origin'].lower()}/{best['destination'].lower()}/{best['dep_date'].replace('-','')[2:]}/"
     links = f"\n🔗 <a href='{gf}'>Google Flights</a> · <a href='{sk}'>Skyscanner</a>"
 

@@ -262,7 +262,21 @@ tr:last-child td{border-bottom:none}
     <div class="card-title">General</div>
     <div class="form-grid">
       <div class="form-group"><label>Tu nombre</label><input id="s-name" type="text"></div>
+      <div class="form-group"><label>Moneda</label>
+        <select id="s-currency">
+          <option value="EUR">EUR — Euro €</option>
+          <option value="USD">USD — Dólar $</option>
+          <option value="GBP">GBP — Libra £</option>
+          <option value="MXN">MXN — Peso mexicano</option>
+          <option value="COP">COP — Peso colombiano</option>
+          <option value="ARS">ARS — Peso argentino</option>
+          <option value="CLP">CLP — Peso chileno</option>
+          <option value="PEN">PEN — Sol peruano</option>
+          <option value="BRL">BRL — Real brasileño</option>
+        </select>
+      </div>
       <div class="form-group"><label>Comprobar cada (minutos)</label><input id="s-interval" type="number" min="15" placeholder="60"></div>
+      <div class="form-group"></div>
     </div>
   </div>
   <div class="card">
@@ -436,7 +450,8 @@ async function loadLiveResults(){
     </div>`;
 
   prices.slice(0,5).forEach((p,i)=>{
-    const gf=`https://www.google.com/travel/flights?q=vuelos+${p.origin}+${p.destination}+${p.dep_date}`;
+    // Correct Google Flights URL for one-way
+    const gf=`https://www.google.com/flights#flt=${p.origin}.${p.destination}.${p.dep_date};c:${window.APP_CURRENCY||'EUR'};e:1;sd:1;t:f`;
     const sk=`https://www.skyscanner.es/transporte/vuelos/${p.origin.toLowerCase()}/${p.destination.toLowerCase()}/${p.dep_date.replace(/-/g,'').slice(2)}/`;
 
     // Days until
@@ -723,6 +738,8 @@ async function loadSettings(){
   document.getElementById('s-tg-chat').value=s.telegram_chat_id||'';
   document.getElementById('s-perc').value=s.cheap_percentile||'25';
   document.getElementById('s-drop').value=s.min_drop_percent||'8';
+  document.getElementById('s-currency').value=s.currency||'EUR';
+  window.APP_CURRENCY=s.currency||'EUR';
 }
 
 async function saveSettings(){
@@ -731,6 +748,7 @@ async function saveSettings(){
       user_name:document.getElementById('s-name').value,
       check_interval:document.getElementById('s-interval').value,
       serpapi_key:document.getElementById('s-serpapi').value,
+      currency:document.getElementById('s-currency').value,
       telegram_token:document.getElementById('s-tg-token').value,
       telegram_chat_id:document.getElementById('s-tg-chat').value,
       cheap_percentile:document.getElementById('s-perc').value,
@@ -752,6 +770,7 @@ async function testTelegram(){
   try{
     const s=await fetch('/api/settings').then(r=>r.json());
     document.getElementById('welcome').textContent='Buenas, '+(s.user_name||'Eduardo')+' 👋';
+    window.APP_CURRENCY=s.currency||'EUR';
   }catch(e){}
   loadDashboard();
 })();
