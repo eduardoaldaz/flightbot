@@ -191,9 +191,14 @@ def require_login(f):
     return wrapper
 
 def is_admin(user):
-    admin_email = fetchone("SELECT value FROM settings WHERE key='admin_email'")
+    if not user: return False
+    # Check env var first, then DB
+    admin_email = os.environ.get("ADMIN_EMAIL","")
+    if not admin_email:
+        row = fetchone("SELECT value FROM settings WHERE key='admin_email'")
+        admin_email = row["value"] if row else ""
     if not admin_email: return False
-    return user and user.get("email") == admin_email.get("value","")
+    return user.get("email","").lower() == admin_email.lower()
 
 # ── User config helpers ───────────────────────────────────────────────────────
 def ucfg(user, key):
