@@ -110,6 +110,14 @@ def init_db():
             ("email_from",""),("email_to",""),("email_smtp","smtp.gmail.com"),
             ("email_port","465"),("email_user",""),("email_pass","")]:
             cur.execute(ins,(k,v))
+        # Migrate: add new columns to existing tables
+        for migration in [
+            "ALTER TABLE alerts ADD COLUMN origins TEXT",
+            "ALTER TABLE alerts ADD COLUMN search_mode TEXT DEFAULT 'dates'",
+            "ALTER TABLE alerts ADD COLUMN explore_month TEXT",
+        ]:
+            try: cur.execute(migration)
+            except Exception: pass
         conn.commit()
         log.info("DB lista")
     finally:
