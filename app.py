@@ -622,8 +622,11 @@ def run_monitor():
             if last:
                 try:
                     hrs = (datetime.utcnow()-datetime.fromisoformat(last["sent_at"])).total_seconds()/3600
-                    drp = (last["price"]-best_rt["total_price"])/last["price"]*100 if last["price"]>0 else 0
-                    if hrs<12 and drp<8: continue
+                    last_price = float(last["price"]) if last["price"] else 0
+                    drop_pct = (last_price - best_rt["total_price"]) / last_price * 100 if last_price > 0 else 0
+                    if hrs < 12 and drop_pct < 8:
+                        log.info(f"    RT Omitiendo — hace {hrs:.1f}h, variación {drop_pct:+.1f}%")
+                        continue
                 except: pass
             msg = build_roundtrip_message(name, alert, top5_rt, best_rt)
             ok  = notify_telegram(msg)
@@ -667,11 +670,15 @@ def run_monitor():
         if last:
             try:
                 hrs = (datetime.utcnow()-datetime.fromisoformat(last["sent_at"])).total_seconds()/3600
-                drp = (last["price"]-best["price"])/last["price"]*100 if last["price"] > 0 else 0
-                if hrs < 12 and drp < 8:
-                    log.info(f"    Omitiendo — mismo precio (hace {hrs:.0f}h, bajó {drp:.1f}%)")
+                last_p = float(last["price"]) if last["price"] else 0
+                # drop_pct > 0 = price went down (good news), < 0 = went up
+                drop_pct = (last_p - best["price"]) / last_p * 100 if last_p > 0 else 0
+                if hrs < 12 and drop_pct < 8:
+                    log.info(f"    Omitiendo — hace {hrs:.1f}h, variación {drop_pct:+.1f}% (umbral bajada 8%)")
                     continue
-            except: pass
+                log.info(f"    Notificando — hace {hrs:.1f}h, precio cambió {drop_pct:+.1f}%")
+            except Exception as e:
+                log.debug(f"Cooldown error: {e}")
 
         msg = build_message(name, alert, top5, best)
         ok  = notify_telegram(msg)
