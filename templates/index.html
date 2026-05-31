@@ -367,8 +367,8 @@ function toast(msg,ok=true){
 
 async function loadDashboard(){
   const s=await fetch('/api/stats').then(r=>r.json());
-  // Always show latest results from history
-  await loadLiveResults();
+  // Load cached results if fresh (< 10 min)
+  loadCachedResults();
   document.getElementById('s-checks').textContent=s.total_checks.toLocaleString();
   document.getElementById('s-notifs').textContent=s.total_notifs;
   document.getElementById('s-active').textContent=s.active_alerts;
@@ -421,7 +421,7 @@ async function checkNow(){
     await fetch('/api/check-now',{method:'POST'});
     // Poll for new results
     await new Promise(r=>setTimeout(r,8000));
-    await loadLiveResults();
+    await loadLiveResults(true);  // true = save to cache
     await loadDashboard();
   } catch(e) {
     liveEl.innerHTML='<div class="card" style="color:var(--red)">Error al buscar vuelos</div>';
@@ -430,7 +430,7 @@ async function checkNow(){
   btn.textContent='🔍 Buscar ahora'; btn.disabled=false;
 }
 
-async function loadLiveResults(){
+async function loadLiveResults(saveToCache=false){
   const stats=await fetch('/api/stats').then(r=>r.json());
   const liveEl=document.getElementById('live-results');
 
@@ -520,6 +520,16 @@ async function loadLiveResults(){
   </div>`;
 
   liveEl.innerHTML=html;
+  if(saveToCache){
+    try{
+      sessionStorage.setItem('flightResults', JSON.stringify({
+        html: html,
+        ts: Date.now(),
+        expires: Date.now() + 10*60*1000  // 10 minutes
+      }));
+    }catch(e){}
+    startResultsTimer(liveEl);
+  }
 }
 
 // ── Alerts ─────────────────────────────────────────────────────────────────
@@ -768,6 +778,54 @@ async function testTelegram(){
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
+
+function loadCachedResults(){
+  const liveEl=document.getElementById('live-results');
+  try{
+    const cached=sessionStorage.getItem('flightResults');
+    if(!cached) return;
+    const data=JSON.parse(cached);
+    const now=Date.now();
+    if(now > data.expires){
+      sessionStorage.removeItem('flightResults');
+      return;
+    }
+    liveEl.style.display='block';
+    liveEl.innerHTML=data.html;
+    startResultsTimer(liveEl, data.expires);
+  }catch(e){}
+}
+
+function startResultsTimer(liveEl, expiresAt){
+  // Add warning banner at top of results
+  const existingBanner=liveEl.querySelector('.results-timer');
+  if(existingBanner) existingBanner.remove();
+
+  const banner=document.createElement('div');
+  banner.className='results-timer';
+  banner.style.cssText='background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#f59e0b;display:flex;align-items:center;gap:8px;';
+
+  liveEl.insertBefore(banner, liveEl.firstChild);
+
+  function updateTimer(){
+    const remaining=Math.max(0, Math.round((expiresAt - Date.now())/1000));
+    const mins=Math.floor(remaining/60);
+    const secs=remaining%60;
+    if(remaining<=0){
+      banner.style.background='rgba(239,68,68,.1)';
+      banner.style.borderColor='rgba(239,68,68,.3)';
+      banner.style.color='#ef4444';
+      banner.innerHTML='⚠️ <b>Resultados expirados</b> — Los precios pueden haber cambiado. Pulsa <b>Buscar ahora</b> para actualizar.';
+      sessionStorage.removeItem('flightResults');
+      clearInterval(timer);
+      return;
+    }
+    banner.innerHTML=`⏱ <b>Precios válidos aprox. ${mins}:${String(secs).padStart(2,'0')} minutos</b> — Los precios de vuelos cambian continuamente. Actualiza antes de comprar.`;
+  }
+
+  updateTimer();
+  const timer=setInterval(updateTimer, 1000);
+}
 
 (async()=>{
   try{
