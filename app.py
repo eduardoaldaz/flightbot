@@ -114,16 +114,20 @@ def init_db():
             ("email_port","465"),("email_user",""),("email_pass","")]:
             cur.execute(ins,(k,v))
 
-        # Migrate existing tables
-        for m in [
+        conn.commit()  # commit table creation first
+
+        # Migrate: add new columns safely (each in its own transaction)
+        migrations = [
             "ALTER TABLE alerts ADD COLUMN origins TEXT",
             "ALTER TABLE alerts ADD COLUMN search_mode TEXT DEFAULT 'month'",
             "ALTER TABLE alerts ADD COLUMN explore_month TEXT",
-        ]:
-            try: cur.execute(m)
-            except: pass
-
-        conn.commit()
+        ]
+        for m in migrations:
+            try:
+                cur.execute(m)
+                conn.commit()
+            except Exception:
+                conn.rollback()  # reset failed transaction before next attempt
         log.info("DB lista")
     finally:
         conn.close()
