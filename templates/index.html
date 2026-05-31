@@ -367,6 +367,8 @@ function toast(msg,ok=true){
 
 async function loadDashboard(){
   const s=await fetch('/api/stats').then(r=>r.json());
+  // Always show latest results from history
+  await loadLiveResults();
   document.getElementById('s-checks').textContent=s.total_checks.toLocaleString();
   document.getElementById('s-notifs').textContent=s.total_notifs;
   document.getElementById('s-active').textContent=s.active_alerts;
@@ -465,16 +467,17 @@ async function loadLiveResults(){
         <div class="result-route"><b>${city(p.origin)}</b> → <b>${city(p.destination)}</b></div>
         <div class="result-meta">
           <span>📅 ${p.dep_date}</span>
+          ${p.dep_time?`<span>🛫 ${p.dep_time}${p.arr_time?' → '+p.arr_time:''}</span>`:''}
           <span>⏱ faltan ${daysStr}</span>
           <span>📊 ${p.n} búsquedas</span>
-          <span style="color:var(--green)">Mín €${Math.round(p.min_price)}</span>
+          <span style="color:var(--green);font-weight:600">Mín €${Math.round(p.min_price)}</span>
           <span style="color:var(--muted)">Media €${Math.round(p.avg_price)}</span>
         </div>
       </div>
       <div class="result-price">€${Math.round(p.min_price)}</div>
       <div class="result-buy">
-        <button class="buy-btn-main" onclick="window.open('${gf}','_blank')">🛒 Comprar en Google Flights</button>
-        <button class="buy-btn-alt" onclick="window.open('${sk}','_blank')">🔎 Ver en Skyscanner</button>
+        <button class="buy-btn-main" onclick="window.open('${sk}','_blank')">🔎 Buscar en Skyscanner</button>
+        <button class="buy-btn-alt" onclick="window.open('${gf}','_blank')">✈️ Ver en Google Flights</button>
       </div>
     </div>`;
   });

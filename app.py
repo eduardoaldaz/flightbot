@@ -640,10 +640,20 @@ def get_stats():
         "active_alerts": (fetchone("SELECT COUNT(*) n FROM alerts WHERE enabled=1") or {"n":0})["n"],
         "recent_notifs": fetchall("""SELECT n.*,a.name alert_name FROM notifications n
             LEFT JOIN alerts a ON a.id=n.alert_id ORDER BY sent_at DESC LIMIT 10"""),
-        "recent_prices": fetchall("""SELECT origin,destination,dep_date,
-            MIN(price) min_price,MAX(price) max_price,AVG(price) avg_price,
-            COUNT(*) n,MAX(checked_at) last_checked
-            FROM price_history GROUP BY origin,destination,dep_date
+        "recent_prices": fetchall("""
+            SELECT p.origin, p.destination, p.dep_date,
+                MIN(p.price) min_price, MAX(p.price) max_price, AVG(p.price) avg_price,
+                COUNT(*) n, MAX(p.checked_at) last_checked,
+                (SELECT dep_time FROM price_history p2
+                 WHERE p2.origin=p.origin AND p2.destination=p.destination
+                 AND p2.dep_date=p.dep_date AND p2.price=MIN(p.price)
+                 ORDER BY p2.checked_at DESC LIMIT 1) dep_time,
+                (SELECT arr_time FROM price_history p2
+                 WHERE p2.origin=p.origin AND p2.destination=p.destination
+                 AND p2.dep_date=p.dep_date AND p2.price=MIN(p.price)
+                 ORDER BY p2.checked_at DESC LIMIT 1) arr_time
+            FROM price_history p
+            GROUP BY p.origin, p.destination, p.dep_date
             ORDER BY last_checked DESC LIMIT 20"""),
     })
 
