@@ -121,6 +121,9 @@ def init_db():
             "ALTER TABLE alerts ADD COLUMN origins TEXT",
             "ALTER TABLE alerts ADD COLUMN search_mode TEXT DEFAULT 'month'",
             "ALTER TABLE alerts ADD COLUMN explore_month TEXT",
+            "ALTER TABLE alerts ADD COLUMN trip_type TEXT DEFAULT 'one_way'",
+            "ALTER TABLE alerts ADD COLUMN duration_min INTEGER DEFAULT 5",
+            "ALTER TABLE alerts ADD COLUMN duration_max INTEGER DEFAULT 5",
         ]
         for m in migrations:
             try:
@@ -341,6 +344,46 @@ def search_one(origin, dest, dep_date, adults, alert):
             except: continue
     return best
 
+def search_round_trip(origin, dest, outbound_date, return_date, adults, alert):
+    """Search both legs of a round trip and return combined price"""
+    outbound = search_one(origin, dest, outbound_date, adults, alert)
+    if not outbound: return None
+    time.sleep(0.3)
+    # For return leg, swap origin/dest and use relaxed time filters
+    return_alert = dict(alert)
+    return_alert["dep_from"] = "06:00"
+    return_alert["dep_to"]   = "23:00"
+    return_alert["arr_from"] = "06:00"
+    return_alert["arr_to"]   = "23:59"
+    inbound = search_one(dest, origin, return_date, adults, return_alert)
+    if not inbound: return None
+    total = outbound["price"] + inbound["price"]
+    return {
+        "origin": origin, "destination": dest,
+        "outbound_date": outbound_date, "return_date": return_date,
+        "outbound_price": outbound["price"], "inbound_price": inbound["price"],
+        "total_price": total,
+        "currency": outbound["currency"],
+        "outbound_airline": outbound["airline"], "inbound_airline": inbound["airline"],
+        "outbound_dep": outbound["dep_time"], "outbound_arr": outbound["arr_time"],
+        "inbound_dep": inbound["dep_time"], "inbound_arr": inbound["arr_time"],
+        "outbound_duration": outbound["duration"], "inbound_duration": inbound["duration"],
+        "outbound_stops": outbound["stops"], "inbound_stops": inbound["stops"],
+    }
+
+def round_trip_combos(month_str, dur_min, dur_max):
+    """Generate all valid outbound+return date pairs for a month and duration range"""
+    dates = month_dates(month_str)
+    combos = []
+    for i, dep in enumerate(dates):
+        dep_dt = datetime.strptime(dep, "%Y-%m-%d").date()
+        for dur in range(dur_min, dur_max + 1):
+            ret_dt = dep_dt + timedelta(days=dur)
+            ret_str = ret_dt.strftime("%Y-%m-%d")
+            if ret_str in dates or ret_dt > datetime.strptime(dates[-1], "%Y-%m-%d").date():
+                combos.append((dep, ret_str))
+    return combos
+
 def month_dates(ym):
     y, m = map(int, ym.split("-"))
     days = calendar.monthrange(y,m)[1]
@@ -438,6 +481,60 @@ def build_message(name, alert, top5, best):
 
     return header + ranking + trend_block + context_block + days_block + vol_block + cross_block + links
 
+def build_roundtrip_message(name, alert, top5_rt, best):
+    """Build Telegram message for round trip results"""
+    try:
+        out_date = datetime.strptime(best["outbound_date"],"%Y-%m-%d").strftime("%d/%m")
+        ret_date = datetime.strptime(best["return_date"],"%Y-%m-%d").strftime("%d/%m")
+        dur = (datetime.strptime(best["return_date"],"%Y-%m-%d") - 
+               datetime.strptime(best["outbound_date"],"%Y-%m-%d")).days
+    except:
+        out_date = best["outbound_date"][5:]
+        ret_date = best["return_date"][5:]
+        dur = 0
+
+    medal = ["🥇","🥈","🥉","4️⃣","5️⃣"]
+    try:
+        month_name = datetime.strptime(alert.get("explore_month","2026-01")+"-01","%Y-%m-%d").strftime("%B %Y").capitalize()
+    except:
+        month_name = alert.get("explore_month","")
+
+    header = f"✈️ <b>Ida y vuelta — {month_name}</b>\n<b>{alert['name']}</b>\n\n"
+
+    lines = []
+    for i, rt in enumerate(top5_rt):
+        try:
+            od = datetime.strptime(rt["outbound_date"],"%Y-%m-%d").strftime("%d/%m")
+            rd = datetime.strptime(rt["return_date"],"%Y-%m-%d").strftime("%d/%m")
+            d  = (datetime.strptime(rt["return_date"],"%Y-%m-%d") - 
+                  datetime.strptime(rt["outbound_date"],"%Y-%m-%d")).days
+        except:
+            od,rd,d = rt["outbound_date"],rt["return_date"],0
+        out_s = "directo" if rt["outbound_stops"]==0 else f"{rt['outbound_stops']}esc."
+        ret_s = "directo" if rt["inbound_stops"]==0 else f"{rt['inbound_stops']}esc."
+        lines.append(
+            f"{medal[i]} <b>{city(rt['origin'])}↔{city(rt['destination'])}</b> | "
+            f"Ida: {od} ({out_s}) · Vuelta: {rd} ({ret_s}) | "
+            f"<b>€{rt['total_price']:.0f} total</b> "
+            f"(€{rt['outbound_price']:.0f}+€{rt['inbound_price']:.0f}) | {d} días"
+        )
+
+    days_left = (datetime.strptime(best["outbound_date"],"%Y-%m-%d").date() - date.today()).days
+
+    gf = (f"https://www.google.com/flights#flt={best['origin']}.{best['destination']}."
+          f"{best['outbound_date']}*{best['destination']}.{best['origin']}."
+          f"{best['return_date']};c:EUR;e:1;sd:1;t:r")
+    sk = (f"https://www.skyscanner.es/transporte/vuelos/{best['origin'].lower()}/"
+          f"{best['destination'].lower()}/{best['outbound_date'].replace('-','')[2:]}/"
+          f"{best['return_date'].replace('-','')[2:]}/")
+
+    return (
+        header + "\n".join(lines) +
+        f"\n\n📅 <b>Quedan {days_left} días</b> para la salida\n" +
+        advice_line(days_left, "estable") +
+        f"\n\n🔗 <a href='{gf}'>Google Flights ida y vuelta</a> · <a href='{sk}'>Skyscanner</a>"
+    )
+
 def advice_line(days_left, direction):
     if days_left <= 14:
         return "⚠️ Menos de 2 semanas — precio máximo pronto. Compra ya si te interesa."
@@ -485,7 +582,58 @@ def run_monitor():
         offset = datetime.utcnow().hour % max(1, len(all_dates))
         dates  = all_dates[offset:offset+3] or all_dates[:3]
 
-        # Search all combinations
+        trip_type  = alert.get("trip_type", "one_way")
+        dur_min    = int(alert.get("duration_min") or 5)
+        dur_max    = int(alert.get("duration_max") or 5)
+
+        # ── Round trip mode ───────────────────────────────────────────────
+        if trip_type == "round_trip" and mode == "month" and alert.get("explore_month"):
+            all_combos = round_trip_combos(alert["explore_month"], dur_min, dur_max)
+            offset = datetime.utcnow().hour % max(1, len(all_combos))
+            combos = all_combos[offset:offset+2] or all_combos[:2]  # 2 combos = 4 API calls
+            rt_results = []
+            for (dep_date, ret_date) in combos:
+                for origin in origins:
+                    for dest in dests:
+                        rt = search_round_trip(origin, dest, dep_date, ret_date, adults, alert)
+                        if rt:
+                            # Save both legs to history
+                            execute("""INSERT INTO price_history
+                                (alert_id,origin,destination,dep_date,price,currency,
+                                 airline,duration,stops,dep_time,arr_time)
+                                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                                (alert["id"],rt["origin"],rt["destination"],rt["outbound_date"],
+                                 rt["outbound_price"],rt["currency"],rt["outbound_airline"],
+                                 rt["outbound_duration"],rt["outbound_stops"],
+                                 rt["outbound_dep"],rt["outbound_arr"]))
+                            if max_p is None or rt["total_price"] <= max_p * 2:
+                                rt_results.append(rt)
+                        time.sleep(0.3)
+            if not rt_results:
+                log.info(f"  {alert['name']}: sin resultados ida y vuelta")
+                continue
+            rt_results.sort(key=lambda x: x["total_price"])
+            top5_rt = rt_results[:5]
+            best_rt = top5_rt[0]
+            log.info(f"  {alert['name']} IDA+VUELTA: {best_rt['origin']}→{best_rt['destination']} "
+                     f"{best_rt['outbound_date']}→{best_rt['return_date']} €{best_rt['total_price']:.0f}")
+            # Cooldown check
+            last = fetchone("SELECT price,sent_at FROM notifications WHERE alert_id=? ORDER BY sent_at DESC LIMIT 1", (alert["id"],))
+            if last:
+                try:
+                    hrs = (datetime.utcnow()-datetime.fromisoformat(last["sent_at"])).total_seconds()/3600
+                    drp = (last["price"]-best_rt["total_price"])/last["price"]*100 if last["price"]>0 else 0
+                    if hrs<12 and drp<8: continue
+                except: pass
+            msg = build_roundtrip_message(name, alert, top5_rt, best_rt)
+            ok  = notify_telegram(msg)
+            execute("INSERT INTO notifications(alert_id,origin,destination,dep_date,price,reason,channel) VALUES(?,?,?,?,?,?,?)",
+                (alert["id"],best_rt["origin"],best_rt["destination"],best_rt["outbound_date"],
+                 best_rt["total_price"],"round_trip top5","telegram" if ok else ""))
+            if ok: total += 1
+            continue  # skip one_way logic below
+
+        # ── One way mode ──────────────────────────────────────────────────
         results = []
         for dep_date in dates:
             for origin in origins:
@@ -578,8 +726,9 @@ def get_alerts():
 def create_alert():
     d = request.json
     execute("""INSERT INTO alerts(name,origins,destinations,search_mode,dates,
-        explore_month,adults,max_stops,dep_from,dep_to,arr_from,arr_to,max_price,enabled)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1)""",
+        explore_month,adults,max_stops,dep_from,dep_to,arr_from,arr_to,max_price,
+        trip_type,duration_min,duration_max,enabled)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)""",
         (d["name"],
          json.dumps([x.upper() for x in d.get("origins",["MAD"])]),
          json.dumps([x.upper() for x in d["destinations"]]),
@@ -589,7 +738,9 @@ def create_alert():
          int(d.get("adults",1)), int(d.get("max_stops",1)),
          d.get("dep_from","06:00"), d.get("dep_to","22:00"),
          d.get("arr_from","06:00"), d.get("arr_to","23:59"),
-         float(d["max_price"]) if d.get("max_price") else None))
+         float(d["max_price"]) if d.get("max_price") else None,
+         d.get("trip_type","one_way"),
+         int(d.get("duration_min",5)), int(d.get("duration_max",5))))
     return jsonify({"ok":True})
 
 @app.route("/api/alerts/<int:aid>", methods=["PUT"])
@@ -600,7 +751,8 @@ def update_alert(aid):
     else:
         execute("""UPDATE alerts SET name=?,origins=?,destinations=?,search_mode=?,
             dates=?,explore_month=?,adults=?,max_stops=?,dep_from=?,dep_to=?,
-            arr_from=?,arr_to=?,max_price=? WHERE id=?""",
+            arr_from=?,arr_to=?,max_price=?,trip_type=?,duration_min=?,duration_max=?
+            WHERE id=?""",
             (d["name"],
              json.dumps([x.upper() for x in d.get("origins",["MAD"])]),
              json.dumps([x.upper() for x in d["destinations"]]),
@@ -610,7 +762,9 @@ def update_alert(aid):
              int(d.get("adults",1)), int(d.get("max_stops",1)),
              d.get("dep_from","06:00"), d.get("dep_to","22:00"),
              d.get("arr_from","06:00"), d.get("arr_to","23:59"),
-             float(d["max_price"]) if d.get("max_price") else None, aid))
+             float(d["max_price"]) if d.get("max_price") else None,
+             d.get("trip_type","one_way"),
+             int(d.get("duration_min",5)), int(d.get("duration_max",5)), aid))
     return jsonify({"ok":True})
 
 @app.route("/api/alerts/<int:aid>", methods=["DELETE"])

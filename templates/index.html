@@ -184,6 +184,26 @@ tr:last-child td{border-bottom:none}
       <div class="form-group"><label>Escalas máximas</label><select id="f-stops"><option value="0">Solo directos</option><option value="1" selected>Hasta 1 escala</option><option value="2">Hasta 2 escalas</option></select></div>
     </div>
     <div class="sep"></div>
+    <div class="card-title">✈️ Tipo de viaje</div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="trip-oneway-btn" onclick="setTripType('one_way')">➡️ Solo ida<br><small style="font-weight:400;opacity:.8">Por tramos, más flexible</small></button>
+      <button class="mode-btn" id="trip-return-btn" onclick="setTripType('round_trip')">↩️ Ida y vuelta<br><small style="font-weight:400;opacity:.8">El bot busca el paquete completo</small></button>
+    </div>
+    <div id="duration-panel" style="display:none">
+      <div class="info-box">El bot buscará <b>todas las combinaciones</b> de salida + regreso dentro del mes y te dirá cuál es el paquete más barato al precio total</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Duración mínima (días)</label>
+          <input id="f-dur-min" type="number" min="1" max="30" value="5">
+        </div>
+        <div class="form-group">
+          <label>Duración máxima (días)</label>
+          <input id="f-dur-max" type="number" min="1" max="30" value="7">
+          <div class="hint">Ej: mín 5 máx 7 → busca viajes de 5, 6 o 7 días</div>
+        </div>
+      </div>
+    </div>
+    <div class="sep"></div>
     <div class="card-title">🛫 Aeropuertos de salida</div>
     <div class="info-box">Añade varios orígenes y el bot encuentra cuál es más barato. Ej: Madrid + Barcelona + Zaragoza</div>
     <div class="chip-wrap" id="orig-wrap">
@@ -316,6 +336,8 @@ tr:last-child td{border-bottom:none}
       <div class="form-group"><label>Precio máximo (€)</label><input id="e-maxprice" type="number"></div>
       <div class="form-group"><label>Escalas máx.</label><select id="e-stops"><option value="0">Solo directo</option><option value="1">Hasta 1</option><option value="2">Hasta 2</option></select></div>
       <div class="form-group full"><label>Orígenes (uno por línea)</label><textarea id="e-origs" rows="2" placeholder="MAD&#10;BCN"></textarea></div>
+      <div class="form-group"><label>Tipo de viaje</label><select id="e-trip-type" onchange="document.getElementById('e-duration-row').style.display=this.value==='round_trip'?'grid':'none'"><option value="one_way">Solo ida</option><option value="round_trip">Ida y vuelta</option></select></div>
+      <div class="form-group" id="e-duration-row" style="display:none"><label>Duración (días mín-máx)</label><div style="display:flex;gap:8px"><input id="e-dur-min" type="number" min="1" max="30" value="5" style="width:80px"><span style="padding:9px 4px;color:var(--muted)">—</span><input id="e-dur-max" type="number" min="1" max="30" value="7" style="width:80px"></div></div>
       <div class="form-group full"><label>Destinos (uno por línea)</label><textarea id="e-dests" rows="2"></textarea></div>
     </div>
     <div class="sep"></div>
@@ -552,7 +574,7 @@ async function loadAlerts(){
       <div class="alert-meta">
         <div class="alert-route">${a.name}</div>
         <div class="alert-details"><span>🛫 ${origs}</span><span>→</span><span>🛬 ${dests}</span></div>
-        <div class="alert-details">${modeTag}<span class="tag">${a.adults} adulto(s)</span>${a.max_price?'<span class="tag amber">Máx €'+a.max_price+'</span>':''}</div>
+        <div class="alert-details">${modeTag}<span class="tag">${a.adults} adulto(s)</span>${a.max_price?'<span class="tag amber">Máx €'+a.max_price+'</span>':''}${a.trip_type==='round_trip'?'<span class="tag blue">↩️ '+a.duration_min+(a.duration_max!==a.duration_min?'-'+a.duration_max:'')+'d I+V</span>':''}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <label class="toggle"><input type="checkbox" ${a.enabled?'checked':''} onchange="toggleAlert(${a.id},this.checked)"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
@@ -591,6 +613,7 @@ function resetForm(){
   document.getElementById('f-month').value=d.toISOString().slice(0,7);
   updateMonthPreview();
   setMode('month');
+  setTripType('one_way');
 }
 
 function setMode(m){
@@ -599,6 +622,16 @@ function setMode(m){
   document.getElementById('mode-dates-btn').classList.toggle('active',m==='dates');
   document.getElementById('mode-month-panel').style.display=m==='month'?'block':'none';
   document.getElementById('mode-dates-panel').style.display=m==='dates'?'block':'none';
+}
+
+let newTripType='one_way';
+function setTripType(t){
+  newTripType=t;
+  document.getElementById('trip-oneway-btn').classList.toggle('active',t==='one_way');
+  document.getElementById('trip-return-btn').classList.toggle('active',t==='round_trip');
+  document.getElementById('duration-panel').style.display=t==='round_trip'?'block':'none';
+  // Round trip only makes sense with month mode
+  if(t==='round_trip') setMode('month');
 }
 
 function updateMonthPreview(){
@@ -661,10 +694,15 @@ async function createAlert(){
   if(!newDests.length){toast('Añade al menos un destino',false);return;}
   if(newMode==='month'&&!document.getElementById('f-month').value){toast('Selecciona un mes',false);return;}
   if(newMode==='dates'&&!newDates.length){toast('Añade al menos una fecha',false);return;}
+  const durMin=parseInt(document.getElementById('f-dur-min').value)||5;
+  const durMax=parseInt(document.getElementById('f-dur-max').value)||7;
   const body={
     name:document.getElementById('f-name').value||newOrigs.map(city).join('/')+' → '+newDests.map(city).join('/'),
     origins:newOrigs,destinations:newDests,
     search_mode:newMode,
+    trip_type:newTripType,
+    duration_min:durMin,
+    duration_max:Math.max(durMin,durMax),
     dates:newMode==='dates'?newDates:[],
     explore_month:newMode==='month'?document.getElementById('f-month').value:'',
     adults:document.getElementById('f-adults').value,
@@ -700,6 +738,11 @@ async function openEdit(id){
   document.getElementById('e-arr-to').value=a.arr_to||'23:59';
   if(a.search_mode==='month'){setEditMode('month');document.getElementById('e-month').value=a.explore_month||'';}
   else{setEditMode('dates');document.getElementById('e-dates').value=(a.dates||[]).sort().join('\n');}
+  const tripType=a.trip_type||'one_way';
+  document.getElementById('e-trip-type').value=tripType;
+  document.getElementById('e-duration-row').style.display=tripType==='round_trip'?'grid':'none';
+  document.getElementById('e-dur-min').value=a.duration_min||5;
+  document.getElementById('e-dur-max').value=a.duration_max||7;
   document.getElementById('edit-modal').classList.add('open');
 }
 
@@ -726,6 +769,9 @@ async function saveEdit(){
       name:document.getElementById('e-name').value,
       origins:origs,destinations:dests,
       search_mode:mode,
+      trip_type:document.getElementById('e-trip-type').value,
+      duration_min:parseInt(document.getElementById('e-dur-min').value)||5,
+      duration_max:parseInt(document.getElementById('e-dur-max').value)||7,
       dates:mode==='dates'?dates:[],
       explore_month:mode==='month'?document.getElementById('e-month').value:'',
       adults:document.getElementById('e-adults').value,
