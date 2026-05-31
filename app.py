@@ -1,7 +1,7 @@
 import json, threading, logging, time, schedule, requests, argparse, os, calendar
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
-from statistics import mean
+from statistics import mean, stdev
 from flask import Flask, request, jsonify, render_template
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -16,6 +16,8 @@ else:
     DB = Path("bot.db")
 
 app = Flask(__name__)
+
+# ── DB ────────────────────────────────────────────────────────────────────────
 
 def get_conn():
     if DATABASE_URL:
@@ -85,7 +87,7 @@ def init_db():
             id {pk}, name TEXT,
             origins TEXT,
             destinations TEXT,
-            search_mode TEXT DEFAULT 'dates',
+            search_mode TEXT DEFAULT 'month',
             dates TEXT,
             explore_month TEXT,
             adults INTEGER DEFAULT 1,
@@ -104,24 +106,29 @@ def init_db():
             origin TEXT, destination TEXT,
             dep_date TEXT, price REAL, reason TEXT, channel TEXT,
             sent_at {ts})""")
+
         for k,v in [("user_name","Eduardo"),("currency","EUR"),("check_interval","60"),
             ("cheap_percentile","25"),("min_drop_percent","15"),("serpapi_key",""),
             ("telegram_token",""),("telegram_chat_id",""),("email_enabled","0"),
             ("email_from",""),("email_to",""),("email_smtp","smtp.gmail.com"),
             ("email_port","465"),("email_user",""),("email_pass","")]:
             cur.execute(ins,(k,v))
-        # Migrate: add new columns to existing tables
-        for migration in [
+
+        # Migrate existing tables
+        for m in [
             "ALTER TABLE alerts ADD COLUMN origins TEXT",
-            "ALTER TABLE alerts ADD COLUMN search_mode TEXT DEFAULT 'dates'",
+            "ALTER TABLE alerts ADD COLUMN search_mode TEXT DEFAULT 'month'",
             "ALTER TABLE alerts ADD COLUMN explore_month TEXT",
         ]:
-            try: cur.execute(migration)
-            except Exception: pass
+            try: cur.execute(m)
+            except: pass
+
         conn.commit()
         log.info("DB lista")
     finally:
         conn.close()
+
+# ── Config ────────────────────────────────────────────────────────────────────
 
 ENV_MAP = {"serpapi_key":"SERPAPI_KEY","telegram_token":"TELEGRAM_TOKEN",
     "telegram_chat_id":"TELEGRAM_CHAT_ID","user_name":"BOT_USER_NAME"}
@@ -138,26 +145,152 @@ def set_cfg(key,value):
     else:
         execute("INSERT OR REPLACE INTO settings VALUES(?,?)",(key,value))
 
+# ── Cities ────────────────────────────────────────────────────────────────────
+
 CITIES = {
     "LIS":"Lisboa","OPO":"Porto","FAO":"Faro","MAD":"Madrid","BCN":"Barcelona",
     "AGP":"Malaga","VLC":"Valencia","BIO":"Bilbao","SVQ":"Sevilla","PMI":"Palma",
     "ALC":"Alicante","SCQ":"Santiago","ZAZ":"Zaragoza","SDR":"Santander",
     "LPA":"Gran Canaria","TFS":"Tenerife Sur","TFN":"Tenerife Norte",
-    "ACE":"Lanzarote","FUE":"Fuerteventura","IST":"Estambul","SAW":"Estambul Sabiha",
-    "ATH":"Atenas","CDG":"Paris","LHR":"Londres","AMS":"Amsterdam","FCO":"Roma",
-    "MXP":"Milan","FRA":"Frankfurt","MUC":"Munich","BER":"Berlin","DXB":"Dubai",
-    "JFK":"Nueva York","MIA":"Miami","BOG":"Bogota","EZE":"Buenos Aires",
+    "ACE":"Lanzarote","FUE":"Fuerteventura","IBZ":"Ibiza","MAH":"Menorca",
+    "IST":"Estambul","SAW":"Estambul Sabiha","ATH":"Atenas","HER":"Creta",
+    "RHO":"Rodas","AYT":"Antalya","SKG":"Tesalonica",
+    "CDG":"Paris CDG","ORY":"Paris Orly","NCE":"Niza","LYS":"Lyon",
+    "LHR":"Londres","LGW":"Gatwick","STN":"Stansted","MAN":"Manchester","EDI":"Edimburgo",
+    "AMS":"Amsterdam","BRU":"Bruselas","EIN":"Eindhoven",
+    "FCO":"Roma","CIA":"Roma Ciampino","MXP":"Milan","BGY":"Milan Bergamo","VCE":"Venecia","NAP":"Naples",
+    "FRA":"Frankfurt","MUC":"Munich","BER":"Berlin","HAM":"Hamburgo",
+    "VIE":"Viena","ZRH":"Zurich","GVA":"Ginebra",
+    "DUB":"Dublin","PRG":"Praga","BUD":"Budapest","WAW":"Varsovia","KRK":"Cracovia",
+    "CPH":"Copenhague","ARN":"Estocolmo","OSL":"Oslo","HEL":"Helsinki",
+    "DXB":"Dubai","DOH":"Doha","AUH":"Abu Dhabi",
+    "CMN":"Casablanca","TUN":"Tunez","CAI":"El Cairo","JNB":"Johannesburgo","CPT":"Ciudad del Cabo",
+    "JFK":"Nueva York","EWR":"Newark","MIA":"Miami","LAX":"Los Angeles",
+    "YYZ":"Toronto","MEX":"Ciudad de Mexico",
+    "BOG":"Bogota","GRU":"Sao Paulo","EZE":"Buenos Aires","SCL":"Santiago Chile","LIM":"Lima",
+    "BKK":"Bangkok","SIN":"Singapur","HKG":"Hong Kong",
+    "NRT":"Tokio Narita","HND":"Tokio Haneda","ICN":"Seoul",
+    "SYD":"Sidney","MEL":"Melbourne",
 }
-def city(c): return CITIES.get(c,c)
+def city(c): return CITIES.get(c, c)
 
-def notify_telegram(msg):
-    token,chat_id=cfg("telegram_token"),cfg("telegram_chat_id")
-    if not token or not chat_id: return False
+# ── Intelligence: Trend & Context ─────────────────────────────────────────────
+
+def get_price_trend(alert_id, origin, dest, dep_date):
+    """Get price trend for a specific route+date over last 7 days"""
+    rows = fetchall(f"""
+        SELECT price, checked_at FROM price_history
+        WHERE alert_id=? AND origin=? AND destination=? AND dep_date=?
+        AND checked_at > {ago(7)}
+        ORDER BY checked_at ASC
+    """, (alert_id, origin, dest, dep_date))
+    if len(rows) < 2:
+        return None
+    prices = [r["price"] for r in rows]
+    dates  = [r["checked_at"] for r in rows]
+    first, last = prices[0], prices[-1]
+    change = last - first
+    pct    = (change / first) * 100 if first > 0 else 0
+    # Build last few data points
+    recent = prices[-5:] if len(prices) >= 5 else prices
+    return {
+        "prices": recent,
+        "change": change,
+        "pct": pct,
+        "direction": "bajando" if pct < -2 else "subiendo" if pct > 2 else "estable",
+        "days": len(set(d[:10] for d in dates)),
+    }
+
+def get_month_context(alert_id, origins, dests, month_str):
+    """Get cheapest days found so far in a month across all origin/dest combos"""
+    if not month_str: return None
+    rows = fetchall(f"""
+        SELECT origin, destination, dep_date, MIN(price) as min_price
+        FROM price_history
+        WHERE alert_id=? AND dep_date LIKE ?
+        GROUP BY origin, destination, dep_date
+        ORDER BY min_price ASC
+        LIMIT 10
+    """, (alert_id, f"{month_str}%"))
+    if not rows: return None
     try:
-        r=requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id":chat_id,"text":msg,"parse_mode":"HTML"},timeout=10)
-        return r.status_code==200
-    except: return False
+        y, m = map(int, month_str.split("-"))
+        total_days = calendar.monthrange(y, m)[1]
+        today = date.today()
+        future_days = sum(1 for d in range(1, total_days+1) if date(y, m, d) >= today)
+        scanned = len(set(r["dep_date"] for r in rows))
+    except:
+        future_days, scanned = 0, len(rows)
+    return {"top": rows[:5], "scanned": scanned, "total": future_days}
+
+def get_volatility(alert_id, origin, dest):
+    """How often does this route's price change?"""
+    rows = fetchall(f"""
+        SELECT dep_date, price, checked_at FROM price_history
+        WHERE alert_id=? AND origin=? AND destination=?
+        AND checked_at > {ago(7)}
+        ORDER BY checked_at ASC
+    """, (alert_id, origin, dest))
+    if len(rows) < 4: return None
+    changes = 0
+    for i in range(1, len(rows)):
+        if abs(rows[i]["price"] - rows[i-1]["price"]) > 5:
+            changes += 1
+    rate = changes / len(rows)
+    if rate > 0.3: return "ALTA"
+    if rate > 0.1: return "MEDIA"
+    return "BAJA"
+
+def days_until(dep_date_str):
+    try:
+        dep = datetime.strptime(dep_date_str, "%Y-%m-%d").date()
+        return (dep - date.today()).days
+    except:
+        return 0
+
+def booking_advice(days_left, direction):
+    """Give actionable advice based on days until flight and trend"""
+    if days_left <= 14:
+        return "⚠️ Quedan menos de 2 semanas — los precios ya no van a bajar. Si te interesa, compra ya."
+    if days_left <= 21:
+        return "⏰ Quedan 3 semanas — zona de riesgo. Los precios suelen subir rápido en este punto."
+    if days_left <= 45:
+        if direction == "bajando":
+            return "📉 Bajando y quedan 6 semanas — puede seguir bajando un poco, pero no esperes demasiado."
+        if direction == "subiendo":
+            return "📈 Subiendo y quedan 6 semanas — si te convence el precio, no esperes más."
+        return "⚖️ Quedan 6 semanas — zona razonable para comprar si el precio te encaja."
+    if days_left <= 90:
+        if direction == "bajando":
+            return "📉 Todavía quedan más de 2 meses y está bajando — puedes esperar un poco más."
+        return "🕐 Más de 2 meses — aún hay tiempo, monitoriza unos días más."
+    return "🗓️ Mucha antelación — espera, los precios suelen bajar acercándose a los 2-3 meses."
+
+def cross_month_insight(alert_id, current_month, best_price):
+    """Check if other months have cheaper options already in DB"""
+    rows = fetchall(f"""
+        SELECT dep_date, MIN(price) as min_price
+        FROM price_history
+        WHERE alert_id=?
+        AND dep_date NOT LIKE ?
+        AND checked_at > {ago(60)}
+        GROUP BY dep_date
+        ORDER BY min_price ASC
+        LIMIT 5
+    """, (alert_id, f"{current_month}%"))
+    if not rows: return None
+    cheaper = [r for r in rows if r["min_price"] < best_price - 20]
+    if not cheaper: return None
+    best_other = cheaper[0]
+    other_month = best_other["dep_date"][:7]
+    try:
+        other_name = datetime.strptime(other_month+"-01", "%Y-%m-%d").strftime("%B")
+    except:
+        other_name = other_month
+    saving = best_price - best_other["min_price"]
+    return f"💡 Si tienes flexibilidad: {other_name} tiene vuelos desde €{best_other['min_price']:.0f} (ahorras €{saving:.0f})"
+
+# ── Flight search ─────────────────────────────────────────────────────────────
 
 def search_one(origin, dest, dep_date, adults, alert):
     key = cfg("serpapi_key")
@@ -205,45 +338,149 @@ def search_one(origin, dest, dep_date, adults, alert):
     return best
 
 def month_dates(ym):
-    y,m = map(int, ym.split("-"))
+    y, m = map(int, ym.split("-"))
     days = calendar.monthrange(y,m)[1]
     today = date.today()
-    dates = []
-    for d in range(1, days+1):
-        dt = date(y,m,d)
-        if dt >= today:
-            dates.append(dt.strftime("%Y-%m-%d"))
-    return dates
+    return [date(y,m,d).strftime("%Y-%m-%d") for d in range(1,days+1) if date(y,m,d) >= today]
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+def notify_telegram(msg):
+    token, chat_id = cfg("telegram_token"), cfg("telegram_chat_id")
+    if not token or not chat_id: return False
+    try:
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id":chat_id,"text":msg,"parse_mode":"HTML"},timeout=10)
+        return r.status_code == 200
+    except: return False
+
+def build_message(name, alert, top5, best):
+    """Build intelligent Telegram message with trend, context and advice"""
+    aid   = alert["id"]
+    mode  = alert.get("search_mode","month")
+    month = alert.get("explore_month","")
+    days_left = days_until(best["dep_date"])
+
+    # Format date nicely
+    try:
+        date_s = datetime.strptime(best["dep_date"],"%Y-%m-%d").strftime("%A %d de %B").capitalize()
+    except:
+        date_s = best["dep_date"]
+
+    stops_s = lambda f: "directo" if f["stops"]==0 else f"{f['stops']} esc."
+    medal   = ["🥇","🥈","🥉","4️⃣","5️⃣"]
+
+    # Header
+    if mode == "month" and month:
+        try:
+            month_name = datetime.strptime(month+"-01","%Y-%m-%d").strftime("%B %Y").capitalize()
+        except:
+            month_name = month
+        header = f"✈️ <b>Mejores vuelos — {month_name}</b>\n<b>{alert['name']}</b>\n\n"
+    else:
+        header = f"✈️ <b>Vuelo barato encontrado</b>\n<b>{alert['name']}</b>\n\n"
+
+    # Top combinations ranking
+    ranking = ""
+    for i, f in enumerate(top5):
+        ds = f["dep_date"][5:].replace("-","/")
+        ranking += f"{medal[i]} <b>{city(f['origin'])} → {city(f['destination'])}</b> | {ds} | <b>€{f['price']:.0f}</b> | {f['dep_time']} | {stops_s(f)} | {f['airline']}\n"
+
+    # Trend analysis for best option
+    trend_block = ""
+    trend = get_price_trend(aid, best["origin"], best["destination"], best["dep_date"])
+    if trend and trend["days"] >= 2:
+        prices_str = " → ".join(f"€{p:.0f}" for p in trend["prices"])
+        emoji = "📉" if trend["direction"]=="bajando" else "📈" if trend["direction"]=="subiendo" else "➡️"
+        trend_block = f"\n{emoji} <b>Tendencia</b> ({trend['days']} días): {prices_str}\n"
+
+    # Month context
+    context_block = ""
+    ctx = get_month_context(aid, [], [], month) if month else None
+    if ctx and ctx["scanned"] > 1:
+        scanned_pct = int(ctx["scanned"] / ctx["total"] * 100) if ctx["total"] > 0 else 0
+        context_block = f"\n📊 <b>Contexto del mes</b> ({ctx['scanned']}/{ctx['total']} días escaneados — {scanned_pct}%):\n"
+        for r in ctx["top"][:4]:
+            is_best = r["dep_date"] == best["dep_date"] and r["origin"] == best["origin"]
+            flag = " 🟢 mínimo hasta ahora" if (is_best and ctx["top"][0]["dep_date"]==best["dep_date"]) else ""
+            ds = r["dep_date"][5:].replace("-","/")
+            context_block += f"  {ds} {city(r['origin'])}→{city(r['destination'])} €{r['min_price']:.0f}{flag}\n"
+
+    # Days until flight + advice
+    days_block = f"\n📅 <b>Quedan {days_left} días</b>\n"
+    direction = trend["direction"] if trend else "estable"
+    days_block += advice_line(days_left, direction) + "\n"
+
+    # Volatility
+    vol = get_volatility(aid, best["origin"], best["destination"])
+    vol_block = ""
+    if vol:
+        vol_emoji = "🔴" if vol=="ALTA" else "🟡" if vol=="MEDIA" else "🟢"
+        vol_block = f"\n{vol_emoji} <b>Volatilidad {best['origin']}→{best['destination']}:</b> {vol}"
+        if vol == "ALTA":
+            vol_block += " — el precio cambia frecuentemente, no esperes demasiado"
+
+    # Cross-month insight (only if we have data)
+    cross_block = ""
+    insight = cross_month_insight(aid, month, best["price"]) if month else None
+    if insight:
+        cross_block = f"\n{insight}"
+
+    # Links
+    gf = f"https://www.google.com/travel/flights?q=vuelos+{best['origin']}+{best['destination']}+{best['dep_date']}"
+    sk = f"https://www.skyscanner.es/transporte/vuelos/{best['origin'].lower()}/{best['destination'].lower()}/{best['dep_date'].replace('-','')[2:]}/"
+    links = f"\n🔗 <a href='{gf}'>Google Flights</a> · <a href='{sk}'>Skyscanner</a>"
+
+    return header + ranking + trend_block + context_block + days_block + vol_block + cross_block + links
+
+def advice_line(days_left, direction):
+    if days_left <= 14:
+        return "⚠️ Menos de 2 semanas — precio máximo pronto. Compra ya si te interesa."
+    if days_left <= 21:
+        return "⏰ 3 semanas — zona de riesgo, los precios suben rápido a partir de aquí."
+    if days_left <= 45:
+        if direction == "bajando":
+            return "📉 Puede seguir bajando un poco, pero no esperes demasiado."
+        if direction == "subiendo":
+            return "📈 Está subiendo. Si el precio te encaja, compra pronto."
+        return "⚖️ Zona razonable para comprar si el precio te encaja."
+    if days_left <= 90:
+        if direction == "bajando":
+            return "📉 Más de 2 meses y bajando — puedes esperar unos días más."
+        return "🕐 Más de 2 meses — monitoriza unos días más antes de decidir."
+    return "🗓️ Mucha antelación aún — los precios suelen bajar acercándose a 2-3 meses."
+
+# ── Monitor ───────────────────────────────────────────────────────────────────
 
 def run_monitor():
     log.info("Comprobando vuelos...")
     alerts = fetchall("SELECT * FROM alerts WHERE enabled=1")
-    name  = cfg("user_name") or "Viajero"
-    total = 0
+    name   = cfg("user_name") or "Viajero"
+    total  = 0
 
     for alert in alerts:
         origins  = json.loads(alert.get("origins") or '["MAD"]')
         dests    = json.loads(alert["destinations"])
         adults   = alert["adults"]
         max_p    = float(alert["max_price"]) if alert.get("max_price") else None
-        mode     = alert.get("search_mode","dates")
+        mode     = alert.get("search_mode","month")
 
+        # Get dates to check this run
         if mode == "month" and alert.get("explore_month"):
-            dates = month_dates(alert["explore_month"])
-            # For month mode: rotate to check ~3 dates per hour
-            offset = datetime.utcnow().hour % max(1,len(dates))
-            dates = dates[offset:offset+3] or dates[:3]
+            all_dates = month_dates(alert["explore_month"])
         else:
-            all_dates = json.loads(alert.get("dates") or "[]")
+            raw = json.loads(alert.get("dates") or "[]")
             today = date.today()
-            dates = sorted([d for d in all_dates
-                if 0<=(datetime.strptime(d,"%Y-%m-%d").date()-today).days<=180])
-            offset = datetime.utcnow().hour % max(1,len(dates)) if dates else 0
-            dates = dates[offset:offset+3] or dates[:3]
+            all_dates = sorted([d for d in raw
+                if 0 <= (datetime.strptime(d,"%Y-%m-%d").date()-today).days <= 180])
 
-        if not dates: continue
+        if not all_dates: continue
 
-        # Search all origin x destination x date combinations
+        # Rotate 3 dates per hour
+        offset = datetime.utcnow().hour % max(1, len(all_dates))
+        dates  = all_dates[offset:offset+3] or all_dates[:3]
+
+        # Search all combinations
         results = []
         for dep_date in dates:
             for origin in origins:
@@ -251,7 +488,8 @@ def run_monitor():
                     f = search_one(origin, dest, dep_date, adults, alert)
                     if f:
                         execute("""INSERT INTO price_history
-                            (alert_id,origin,destination,dep_date,price,currency,airline,duration,stops,dep_time,arr_time)
+                            (alert_id,origin,destination,dep_date,price,currency,
+                             airline,duration,stops,dep_time,arr_time)
                             VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
                             (alert["id"],f["origin"],f["destination"],f["dep_date"],
                              f["price"],f["currency"],f["airline"],f["duration"],
@@ -260,103 +498,99 @@ def run_monitor():
                             results.append(f)
                     time.sleep(0.3)
 
-        if not results: continue
+        if not results:
+            log.info(f"  {alert['name']}: sin resultados dentro del presupuesto")
+            continue
+
         results.sort(key=lambda x: x["price"])
         top5 = results[:5]
         best = top5[0]
 
-        # Check if already sent similar alert recently
+        log.info(f"  {alert['name']}: mejor {best['origin']}→{best['destination']} {best['dep_date']} €{best['price']:.0f}")
+
+        # Cooldown: skip if sent recently and price hasn't dropped much
         last = fetchone("""SELECT price,sent_at FROM notifications
             WHERE alert_id=? ORDER BY sent_at DESC LIMIT 1""", (alert["id"],))
         if last:
             try:
                 hrs = (datetime.utcnow()-datetime.fromisoformat(last["sent_at"])).total_seconds()/3600
-                drp = (last["price"]-best["price"])/last["price"]*100
-                if hrs<12 and drp<10: continue
+                drp = (last["price"]-best["price"])/last["price"]*100 if last["price"] > 0 else 0
+                if hrs < 12 and drp < 8:
+                    log.info(f"    Omitiendo — mismo precio (hace {hrs:.0f}h, bajó {drp:.1f}%)")
+                    continue
             except: pass
 
-        # Build message
-        date_str = lambda d: datetime.strptime(d,"%Y-%m-%d").strftime("%d/%m").strip()
-        medal = ["🥇","🥈","🥉","4️⃣","5️⃣"]
-        lines = []
-        for i,f in enumerate(top5):
-            stops = "directo" if f["stops"]==0 else f"{f['stops']} esc."
-            lines.append(f"{medal[i]} {city(f['origin'])}→{city(f['destination'])} | {date_str(f['dep_date'])} | <b>€{f['price']:.0f}</b> | {f['dep_time']} | {stops} | {f['airline']}")
-
-        gf = f"https://www.google.com/travel/flights?q=vuelos+{best['origin']}+{best['destination']}+{best['dep_date']}"
-
-        if mode == "month":
-            month_name = datetime.strptime(alert["explore_month"]+"-01","%Y-%m-%d").strftime("%B %Y").capitalize()
-            header = f"✈️ <b>Mejores vuelos en {month_name}, {name}</b>\n<b>{alert['name']}</b>\n\n"
-        else:
-            header = f"✈️ <b>Vuelos baratos encontrados, {name}</b>\n<b>{alert['name']}</b>\n\n"
-
-        msg = header + "\n".join(lines) + f"\n\n<a href='{gf}'>Ver en Google Flights</a>"
-        ok = notify_telegram(msg)
-        execute("""INSERT INTO notifications(alert_id,origin,destination,dep_date,price,reason,channel)
+        msg = build_message(name, alert, top5, best)
+        ok  = notify_telegram(msg)
+        execute("""INSERT INTO notifications
+            (alert_id,origin,destination,dep_date,price,reason,channel)
             VALUES(?,?,?,?,?,?,?)""",
             (alert["id"],best["origin"],best["destination"],best["dep_date"],
              best["price"],"ranking top5","telegram" if ok else ""))
-        total += 1
-        log.info(f"  Alerta '{alert['name']}': mejor €{best['price']:.0f} {best['origin']}→{best['destination']}")
+        if ok: total += 1
 
     log.info(f"Listo: {total} alerta(s) enviada(s)")
 
-_running=False
+# ── Scheduler ─────────────────────────────────────────────────────────────────
+
+_running = False
 def start_scheduler():
     global _running
     if _running: return
-    _running=True
-    interval=int(cfg("check_interval") or 60)
+    _running = True
+    interval = int(cfg("check_interval") or 60)
     schedule.every(interval).minutes.do(run_monitor)
-    threading.Thread(target=lambda:[schedule.run_pending() or time.sleep(30) for _ in iter(int,1)],daemon=True).start()
+    threading.Thread(
+        target=lambda:[schedule.run_pending() or time.sleep(30) for _ in iter(int,1)],
+        daemon=True).start()
     log.info(f"Scheduler: cada {interval} min")
+
+# ── API routes ────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index(): return render_template("index.html")
 
-@app.route("/api/settings",methods=["GET"])
+@app.route("/api/settings", methods=["GET"])
 def get_settings():
     return jsonify({r["key"]:r["value"] for r in fetchall("SELECT key,value FROM settings")})
 
-@app.route("/api/settings",methods=["POST"])
+@app.route("/api/settings", methods=["POST"])
 def save_settings():
     for k,v in request.json.items(): set_cfg(k,str(v))
     global _running; schedule.clear(); _running=False; start_scheduler()
     return jsonify({"ok":True})
 
-@app.route("/api/alerts",methods=["GET"])
+@app.route("/api/alerts", methods=["GET"])
 def get_alerts():
     rows = fetchall("SELECT * FROM alerts ORDER BY created_at DESC")
     for r in rows:
         r["origins"]      = json.loads(r.get("origins") or '["MAD"]')
         r["destinations"] = json.loads(r["destinations"])
-        if r.get("dates"): r["dates"] = json.loads(r["dates"])
-        else: r["dates"] = []
+        r["dates"]        = json.loads(r.get("dates") or "[]")
     return jsonify(rows)
 
-@app.route("/api/alerts",methods=["POST"])
+@app.route("/api/alerts", methods=["POST"])
 def create_alert():
     d = request.json
-    execute("""INSERT INTO alerts(name,origins,destinations,search_mode,dates,explore_month,
-        adults,max_stops,dep_from,dep_to,arr_from,arr_to,max_price,enabled)
+    execute("""INSERT INTO alerts(name,origins,destinations,search_mode,dates,
+        explore_month,adults,max_stops,dep_from,dep_to,arr_from,arr_to,max_price,enabled)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1)""",
         (d["name"],
          json.dumps([x.upper() for x in d.get("origins",["MAD"])]),
          json.dumps([x.upper() for x in d["destinations"]]),
-         d.get("search_mode","dates"),
+         d.get("search_mode","month"),
          json.dumps(d.get("dates",[])),
          d.get("explore_month",""),
-         int(d.get("adults",1)),int(d.get("max_stops",1)),
-         d.get("dep_from","06:00"),d.get("dep_to","22:00"),
-         d.get("arr_from","06:00"),d.get("arr_to","23:59"),
+         int(d.get("adults",1)), int(d.get("max_stops",1)),
+         d.get("dep_from","06:00"), d.get("dep_to","22:00"),
+         d.get("arr_from","06:00"), d.get("arr_to","23:59"),
          float(d["max_price"]) if d.get("max_price") else None))
     return jsonify({"ok":True})
 
-@app.route("/api/alerts/<int:aid>",methods=["PUT"])
+@app.route("/api/alerts/<int:aid>", methods=["PUT"])
 def update_alert(aid):
     d = request.json
-    if list(d.keys())==["enabled"]:
+    if list(d.keys()) == ["enabled"]:
         execute("UPDATE alerts SET enabled=? WHERE id=?",(d["enabled"],aid))
     else:
         execute("""UPDATE alerts SET name=?,origins=?,destinations=?,search_mode=?,
@@ -365,50 +599,58 @@ def update_alert(aid):
             (d["name"],
              json.dumps([x.upper() for x in d.get("origins",["MAD"])]),
              json.dumps([x.upper() for x in d["destinations"]]),
-             d.get("search_mode","dates"),
+             d.get("search_mode","month"),
              json.dumps(d.get("dates",[])),
              d.get("explore_month",""),
-             int(d.get("adults",1)),int(d.get("max_stops",1)),
-             d.get("dep_from","06:00"),d.get("dep_to","22:00"),
-             d.get("arr_from","06:00"),d.get("arr_to","23:59"),
-             float(d["max_price"]) if d.get("max_price") else None,aid))
+             int(d.get("adults",1)), int(d.get("max_stops",1)),
+             d.get("dep_from","06:00"), d.get("dep_to","22:00"),
+             d.get("arr_from","06:00"), d.get("arr_to","23:59"),
+             float(d["max_price"]) if d.get("max_price") else None, aid))
     return jsonify({"ok":True})
 
-@app.route("/api/alerts/<int:aid>",methods=["DELETE"])
+@app.route("/api/alerts/<int:aid>", methods=["DELETE"])
 def delete_alert(aid):
-    execute("DELETE FROM alerts WHERE id=?",(aid,)); return jsonify({"ok":True})
-
-@app.route("/api/check-now",methods=["POST"])
-def check_now():
-    threading.Thread(target=run_monitor,daemon=True).start()
+    execute("DELETE FROM alerts WHERE id=?",(aid,))
     return jsonify({"ok":True})
 
-@app.route("/api/test-telegram",methods=["POST"])
-def test_telegram():
-    name=cfg("user_name") or "Viajero"
-    ok=notify_telegram(f"✅ Bot conectado, <b>{name}</b>! FlightBot funcionando correctamente. ✈️")
-    return jsonify({"ok":ok,"msg":"Telegram OK" if ok else "Error - revisa token y chat_id"})
+@app.route("/api/check-now", methods=["POST"])
+def check_now():
+    threading.Thread(target=run_monitor, daemon=True).start()
+    return jsonify({"ok":True})
 
-@app.route("/api/stats",methods=["GET"])
+@app.route("/api/test-telegram", methods=["POST"])
+def test_telegram():
+    name = cfg("user_name") or "Viajero"
+    ok = notify_telegram(
+        f"✅ <b>Bot conectado, {name}!</b>\n\n"
+        f"FlightBot está activo y monitorizando vuelos.\n"
+        f"Pronto recibirás alertas con análisis completo de precios. ✈️")
+    return jsonify({"ok":ok,"msg":"Telegram OK ✓" if ok else "Error — revisa token y chat_id"})
+
+@app.route("/api/stats", methods=["GET"])
 def get_stats():
     return jsonify({
-        "total_checks":(fetchone("SELECT COUNT(*) n FROM price_history") or {"n":0})["n"],
-        "total_notifs":(fetchone("SELECT COUNT(*) n FROM notifications") or {"n":0})["n"],
-        "active_alerts":(fetchone("SELECT COUNT(*) n FROM alerts WHERE enabled=1") or {"n":0})["n"],
-        "recent_notifs":fetchall("SELECT n.*,a.name alert_name FROM notifications n LEFT JOIN alerts a ON a.id=n.alert_id ORDER BY sent_at DESC LIMIT 10"),
-        "recent_prices":fetchall("""SELECT origin,destination,dep_date,
+        "total_checks":  (fetchone("SELECT COUNT(*) n FROM price_history") or {"n":0})["n"],
+        "total_notifs":  (fetchone("SELECT COUNT(*) n FROM notifications") or {"n":0})["n"],
+        "active_alerts": (fetchone("SELECT COUNT(*) n FROM alerts WHERE enabled=1") or {"n":0})["n"],
+        "recent_notifs": fetchall("""SELECT n.*,a.name alert_name FROM notifications n
+            LEFT JOIN alerts a ON a.id=n.alert_id ORDER BY sent_at DESC LIMIT 10"""),
+        "recent_prices": fetchall("""SELECT origin,destination,dep_date,
             MIN(price) min_price,MAX(price) max_price,AVG(price) avg_price,
             COUNT(*) n,MAX(checked_at) last_checked
             FROM price_history GROUP BY origin,destination,dep_date
             ORDER BY last_checked DESC LIMIT 20"""),
     })
 
+# ── Start ─────────────────────────────────────────────────────────────────────
+
 init_db()
 start_scheduler()
 
-if __name__=="__main__":
-    parser=argparse.ArgumentParser()
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
     parser.add_argument("--port",type=int,default=int(os.environ.get("PORT",8081)))
-    args=parser.parse_args()
-    print(f"\nFlightBot -> http://localhost:{args.port}\n")
-    app.run(host="0.0.0.0",port=args.port,debug=False)
+    args = parser.parse_args()
+    print(f"\n✈️  FlightBot → http://localhost:{args.port}\n")
+    app.run(host="0.0.0.0", port=args.port, debug=False)
