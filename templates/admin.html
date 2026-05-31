@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — FlightBot</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0e1a;color:#e2e8f0;font-family:'Space Grotesk',sans-serif;font-size:14px;padding:32px;max-width:1100px;margin:0 auto}
+h1{font-size:24px;margin-bottom:6px;color:#3b82f6}
+.sub{color:#64748b;font-size:13px;margin-bottom:28px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+.stat{background:#111827;border:1px solid #2a3650;border-radius:10px;padding:18px}
+.stat-v{font-size:28px;font-weight:600}
+.stat-l{font-size:12px;color:#64748b;margin-top:4px}
+.global-key{background:#111827;border:1px solid #2a3650;border-radius:10px;padding:16px;margin-bottom:24px;display:flex;align-items:center;gap:12px}
+.global-key .dot{width:10px;height:10px;border-radius:50%}
+.dot.ok{background:#10b981}
+.dot.missing{background:#ef4444}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 12px;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #2a3650}
+td{padding:10px 12px;border-bottom:1px solid rgba(42,54,80,.4);font-size:13px;vertical-align:middle}
+.badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge.free{background:rgba(100,116,139,.2);color:#94a3b8}
+.badge.pro{background:rgba(59,130,246,.2);color:#3b82f6}
+select{background:#1c2333;border:1px solid #2a3650;color:#e2e8f0;padding:5px 8px;border-radius:5px;font-family:inherit;font-size:12px;cursor:pointer}
+.key-input{background:#1c2333;border:1px solid #2a3650;color:#e2e8f0;padding:5px 8px;border-radius:5px;font-family:monospace;font-size:11px;width:220px}
+.key-input::placeholder{color:#3a4a5c}
+.btn-assign{background:#1c2333;border:1px solid #3b82f6;color:#3b82f6;padding:5px 10px;border-radius:5px;font-family:inherit;font-size:12px;cursor:pointer;transition:background .15s}
+.btn-assign:hover{background:rgba(59,130,246,.15)}
+.key-status{font-size:11px;color:#10b981}
+.key-none{font-size:11px;color:#64748b;font-style:italic}
+a.back{color:#3b82f6;text-decoration:none;font-size:13px;display:inline-block;margin-bottom:20px}
+.section-title{font-size:16px;font-weight:600;margin-bottom:16px;margin-top:32px}
+</style>
+</head>
+<body>
+<a href="/app" class="back">← Volver a la app</a>
+<h1>🛠 Panel de administración</h1>
+<p class="sub">Gestiona usuarios, planes y claves de API</p>
+
+<div class="stats" id="stats-grid">
+  <div class="stat"><div class="stat-v">—</div><div class="stat-l">Usuarios</div></div>
+  <div class="stat"><div class="stat-v">—</div><div class="stat-l">Alertas</div></div>
+  <div class="stat"><div class="stat-v">—</div><div class="stat-l">Búsquedas</div></div>
+  <div class="stat"><div class="stat-v">—</div><div class="stat-l">Notificaciones</div></div>
+</div>
+
+<div class="global-key" id="global-key-status">
+  <div class="dot" id="global-dot"></div>
+  <div>
+    <b>SerpApi Key Global</b>
+    <div id="global-key-text" style="font-size:12px;color:#64748b;margin-top:2px"></div>
+  </div>
+</div>
+
+<div class="section-title">Usuarios</div>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Usuario</th>
+      <th>Plan</th>
+      <th>SerpApi key propia</th>
+      <th>Registro</th>
+    </tr>
+  </thead>
+  <tbody id="users-table"></tbody>
+</table>
+
+<script>
+async function load(){
+  const d = await fetch('/api/admin/stats').then(r=>r.json());
+
+  // Stats
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat"><div class="stat-v">${d.users.length}</div><div class="stat-l">Usuarios</div></div>
+    <div class="stat"><div class="stat-v">${d.alerts}</div><div class="stat-l">Alertas</div></div>
+    <div class="stat"><div class="stat-v">${d.checks}</div><div class="stat-l">Búsquedas</div></div>
+    <div class="stat"><div class="stat-v">${d.notifs}</div><div class="stat-l">Notificaciones</div></div>`;
+
+  // Global key status
+  const dot = document.getElementById('global-dot');
+  const txt = document.getElementById('global-key-text');
+  if(d.global_serpapi){
+    dot.className='dot ok';
+    txt.textContent='✓ Key global configurada en variables de entorno (SERPAPI_KEY) — usada por todos los usuarios sin key propia';
+  } else {
+    dot.className='dot missing';
+    txt.textContent='⚠️ No hay key global — añade SERPAPI_KEY en las variables de entorno de Render';
+    txt.style.color='#ef4444';
+  }
+
+  // Users table
+  document.getElementById('users-table').innerHTML = d.users.map(u => `
+    <tr>
+      <td style="color:#64748b">${u.id}</td>
+      <td>
+        <div style="font-weight:500">${u.name||'—'}</div>
+        <div style="font-size:12px;color:#64748b">${u.email}</div>
+      </td>
+      <td>
+        <select onchange="setPlan(${u.id},this.value)">
+          <option value="free" ${u.plan==='free'?'selected':''}>Free</option>
+          <option value="pro" ${u.plan==='pro'?'selected':''}>Pro</option>
+        </select>
+      </td>
+      <td>
+        ${u.serpapi_key
+          ? `<span class="key-status">✓ Key propia asignada</span>
+             <button class="btn-assign" style="margin-left:8px" onclick="clearKey(${u.id})">Quitar</button>`
+          : `<span class="key-none">Usa key global</span>
+             <div style="display:flex;gap:6px;margin-top:6px">
+               <input class="key-input" id="key-${u.id}" placeholder="sk-xxxxxxxxxxxx">
+               <button class="btn-assign" onclick="assignKey(${u.id})">Asignar</button>
+             </div>`
+        }
+      </td>
+      <td style="color:#64748b">${(u.created_at||'').slice(0,10)}</td>
+    </tr>`).join('');
+}
+
+async function setPlan(uid, plan){
+  await fetch('/api/admin/set-plan',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user_id:uid, plan})
+  });
+  showToast('Plan actualizado a '+plan);
+}
+
+async function assignKey(uid){
+  const key = document.getElementById('key-'+uid).value.trim();
+  if(!key){ alert('Introduce una key válida'); return; }
+  await fetch('/api/admin/set-serpapi',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user_id:uid, key})
+  });
+  showToast('Key asignada correctamente');
+  load();
+}
+
+async function clearKey(uid){
+  if(!confirm('¿Quitar la key propia? El usuario pasará a usar la key global.')) return;
+  await fetch('/api/admin/set-serpapi',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user_id:uid, key:''})
+  });
+  showToast('Key eliminada');
+  load();
+}
+
+function showToast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;right:24px;background:#111827;border:1px solid #10b981;color:#10b981;padding:12px 18px;border-radius:8px;font-size:13px;z-index:999';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2500);
+}
+
+load();
+</script>
+</body>
+</html>

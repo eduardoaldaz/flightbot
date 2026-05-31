@@ -1,0 +1,702 @@
+Flujo correcto para el bot.
+
+Cliente empieza chat:
+Bot responde menu principal:
+En que puedo ayudarte?
+1. Contratar plan nuevo
+2. Renovar plan
+3. Consultar precios
+4. Otra consulta
+
+    Cliente elige opcion 1 del menu principal
+    Bot responde menu 1:
+    Que servicio deseas contratar?
+    1. Facturacion + Firma electronica
+    2. Solo Facturacion
+    3. Solo Firma electronica
+    4. Regresar al menu principal
+
+        Cliente elige opción 1 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs sin firma electronica. 
+            2. Basico $30 350 docs con firma electronica. 
+            3. Estandar $50 550 docs con firma electronica. 
+            4. Premium $80 ilimitados con firma electronica. 
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+                Cliente elige opción 2, 3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                RUC en PDF
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente responde opción 2 del menu 2 
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs sin firma electronica. 
+            2. Basico $30 350 docs con firma electronica. 
+            3. Estandar $50 550 docs con firma electronica. 
+            4. Premium $80 ilimitados con firma electronica. 
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+                Cliente elige opción 2, 3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                RUC en PDF
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+        
+        
+        Cliente elige opción 2 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs 
+            2. Basico $25 350 docs
+            3. Estandar $40 550 docs
+            4. Premium $70 ilimitados
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1,2,3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente responde opción 2 del menu 2 
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs 
+            2. Basico $25 350 docs
+            3. Estandar $40 550 docs
+            4. Premium $70 ilimitados
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1,2,3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+
+        Cliente elige opción 3 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles cual desea contratar? 
+            1. 7 dias $10. 
+            2. 30 dias $13. 
+            3. 1 ano $19. 
+            4. 2 anos $35. 
+            5. 3 anos $45. 
+            6. 4 anos $55. 
+            7. 5 anos $62
+
+                Cliente elige opción 1, 2, 3, 4, 5, 6, 7 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente elige opción 2 del menu 2
+            Bot responde menu 3:
+            Planes disponibles cual desea contratar? 
+            1. 7 dias $10. 
+            2. 30 dias $13. 
+            3. 1 ano $19. 
+            4. 2 anos $35. 
+            5. 3 anos $45. 
+            6. 4 anos $55. 
+            7. 5 anos $62
+
+                Cliente elige opción 1, 2, 3, 4, 5, 6, 7 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados del representante legal (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+    Cliente elige opción 4 del menu 1
+        Bot responde menu 2:
+        Menu principal
+
+
+----
+
+    Cliente elige opcion 2 del menu principal
+    Bot responde menu 1:
+    Que servicio desea renovar?
+    1. Facturacion + Firma electronica
+    2. Solo Facturacion
+    3. Solo Firma electronica
+    4. Regresar al menu principal
+
+        Cliente elige opción 1 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs sin firma electronica. 
+            2. Basico $30 350 docs con firma electronica. 
+            3. Estandar $50 550 docs con firma electronica. 
+            4. Premium $80 ilimitados con firma electronica. 
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+                Cliente elige opción 2, 3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                RUC en PDF
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente responde opción 2 del menu 2 
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs sin firma electronica. 
+            2. Basico $30 350 docs con firma electronica. 
+            3. Estandar $50 550 docs con firma electronica. 
+            4. Premium $80 ilimitados con firma electronica. 
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+                Cliente elige opción 2, 3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                RUC en PDF
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+        
+        
+        Cliente elige opción 2 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs 
+            2. Basico $25 350 docs
+            3. Estandar $40 550 docs
+            4. Premium $70 ilimitados
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1,2,3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente responde opción 2 del menu 2 
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs 
+            2. Basico $25 350 docs
+            3. Estandar $40 550 docs
+            4. Premium $70 ilimitados
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1,2,3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+
+        Cliente elige opción 3 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles cual desea contratar? 
+            1. 7 dias $10. 
+            2. 30 dias $13. 
+            3. 1 ano $19. 
+            4. 2 anos $35. 
+            5. 3 anos $45. 
+            6. 4 anos $55. 
+            7. 5 anos $62
+
+                Cliente elige opción 1, 2, 3, 4, 5, 6, 7 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente elige opción 2 del menu 2
+            Bot responde menu 3:
+            Planes disponibles cual desea contratar? 
+            1. 7 dias $10. 
+            2. 30 dias $13. 
+            3. 1 ano $19. 
+            4. 2 anos $35. 
+            5. 3 anos $45. 
+            6. 4 anos $55. 
+            7. 5 anos $62
+
+                Cliente elige opción 1, 2, 3, 4, 5, 6, 7 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados del representante legal (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+    Cliente elige opción 4 del menu 1
+        Bot responde menu 2:
+        Menu principal
+
+----
+
+     Cliente elige opcion 3 del menu principal
+    Bot responde menu 1:
+    Que servicio deseas consultar?
+    1. Facturacion + Firma electronica
+    2. Solo Facturacion
+    3. Solo Firma electronica
+    4. Regresar al menu principal
+
+        Cliente elige opción 1 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs sin firma electronica. 
+            2. Basico $30 350 docs con firma electronica. 
+            3. Estandar $50 550 docs con firma electronica. 
+            4. Premium $80 ilimitados con firma electronica. 
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+                Cliente elige opción 2, 3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                RUC en PDF
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente responde opción 2 del menu 2 
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs sin firma electronica. 
+            2. Basico $30 350 docs con firma electronica. 
+            3. Estandar $50 550 docs con firma electronica. 
+            4. Premium $80 ilimitados con firma electronica. 
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+                Cliente elige opción 2, 3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                RUC en PDF
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+        
+        
+        Cliente elige opción 2 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs 
+            2. Basico $25 350 docs
+            3. Estandar $40 550 docs
+            4. Premium $70 ilimitados
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1,2,3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente responde opción 2 del menu 2 
+            Bot responde menu 3:
+            Planes disponibles por 1 año cual desea contratar? 
+            1. Emprendedor $10 150 docs 
+            2. Basico $25 350 docs
+            3. Estandar $40 550 docs
+            4. Premium $70 ilimitados
+            Todos nuestros planes incluyen capacitacion y soporte 24/7.
+
+                Cliente elige opción 1,2,3, o 4 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                RUC en PDF
+                Archivo de firma electronica y contraseña de la misma
+                Logo de empresa para imprimir en facturas (opcional)
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+
+        Cliente elige opción 3 del menu 1
+        Bot responde menu 2:
+        Que tipo de persona es:
+        1. Persona natural
+        2. Persona Juridica
+
+            Cliente elige opción 1 del menu 2
+            Bot responde menu 3:
+            Planes disponibles cual desea contratar? 
+            1. 7 dias $10. 
+            2. 30 dias $13. 
+            3. 1 ano $19. 
+            4. 2 anos $35. 
+            5. 3 anos $45. 
+            6. 4 anos $55. 
+            7. 5 anos $62
+
+                Cliente elige opción 1, 2, 3, 4, 5, 6, 7 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona natural y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+            Cliente elige opción 2 del menu 2
+            Bot responde menu 3:
+            Planes disponibles cual desea contratar? 
+            1. 7 dias $10. 
+            2. 30 dias $13. 
+            3. 1 ano $19. 
+            4. 2 anos $35. 
+            5. 3 anos $45. 
+            6. 4 anos $55. 
+            7. 5 anos $62
+
+                Cliente elige opción 1, 2, 3, 4, 5, 6, 7 del menu 3
+                Bot responde:
+                Muy bien, envíenos sus requisitos como persona juridica y en breve un agente atendera su requerimiento.
+                Requisitos:
+                Correo y número de telefono móvil
+                Foto de cedula de ambos lados del representante legal (anverso y reverso)
+                Selfie con su cedula debajo del menton
+                Escritura de constitucion en PDF
+                Nombramiento vigente del representante legal en PDF
+                Transferencia por el pago del plan escogido a:
+                    Felix Aldaz
+                    Banco Pichincha 
+                    Cta. Ahorro 
+                    Número: 3474097800
+                    CI 0704596402
+                    Email: eduardoaldazn@gmail.com
+                Y luego el bot enviara notificación a Eduardo.
+
+        Cliente elige opción 4 del menu 1
+        Bot responde menu 2:
+        Menu principal
+
+    Cliente elige opcion 4 del menu principal
+    Bot responde con ia y otras consultas dira que en breve un agente atendera su requerimiento.
+    y notificara a Eduardo
